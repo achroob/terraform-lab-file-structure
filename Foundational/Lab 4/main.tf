@@ -127,7 +127,7 @@ resource "random_id" "random" {
 
 resource "azurerm_storage_account" "sa" {
   account_replication_type = "LRS"
-  account_tier             = "Standard"
+  account_tier             = "Premium"
   location                 = var.RG_LOCATION
   name                     = "${var.STORAGE_ACCOUNT[count.index]}${random_id.random.hex}"
   resource_group_name      = azurerm_resource_group.resgrp["vmrg"].name
