@@ -21,4 +21,5 @@ variable "USERNAME" {
 variable "PASSWORD" {
   sensitive   = true
   description = "Enter password for vm"
+  default     = "Admin@890"
 }
