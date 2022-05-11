@@ -1,12 +1,3 @@
-terraform {
-  backend "azurerm" {
-    resource_group_name  = "demo-state-rg"
-    storage_account_name = "demotfstatebackend"
-    container_name       = "lab3"
-    key                  = "terraform.tfstate"
-  }
-}
-
 resource "azurerm_resource_group" "resgrp" {
   location = var.RG_LOCATION
   name     = "${var.PREFIX}-rg"
