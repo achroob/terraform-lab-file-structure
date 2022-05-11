@@ -1,24 +1,15 @@
+terraform {
+  backend "azurerm" {
+    resource_group_name  = "demo-state-rg"
+    storage_account_name = "demotfstatebackend"
+    container_name       = "lab3"
+    key                  = "terraform.tfstate"
+  }
+}
+
 resource "azurerm_resource_group" "resgrp" {
   location = var.RG_LOCATION
   name     = "${var.PREFIX}-rg"
-}
-
-resource "random_id" "random" {
-  byte_length = 2
-}
-
-resource "azurerm_storage_account" "sa" {
-  account_replication_type = "LRS"
-  account_tier             = "Standard"
-  location                 = var.RG_LOCATION
-  name                     = "${var.STORAGE_ACCOUNT[count.index]}${random_id.random.hex}"
-  resource_group_name      = azurerm_resource_group.resgrp.name
-  count                    = length(var.STORAGE_ACCOUNT)
-}
-
-resource "azurerm_storage_container" "sc" {
-  name                 = "tfstate"
-  storage_account_name = azurerm_storage_account.sa[1].name
 }
 
 resource "azurerm_virtual_network" "vnet" {
@@ -28,11 +19,11 @@ resource "azurerm_virtual_network" "vnet" {
   resource_group_name = azurerm_resource_group.resgrp.name
 }
 
-resource "azurerm_subnet" "sub1" {
-  name                 = "${var.PREFIX}-sub1"
+resource "azurerm_subnet" "sub" {
+  name                 = "${var.PREFIX}-sub"
   resource_group_name  = azurerm_resource_group.resgrp.name
   virtual_network_name = azurerm_virtual_network.vnet.name
-  address_prefixes     = [var.VNET_SUBNET1_ADDRESS]
+  address_prefixes     = [var.VNET_SUBNET_ADDRESS]
 }
 
 resource "azurerm_public_ip" "pubip" {
@@ -46,10 +37,11 @@ resource "azurerm_network_interface" "nic1" {
   location            = var.RG_LOCATION
   name                = "${var.PREFIX}-nic1"
   resource_group_name = azurerm_resource_group.resgrp.name
+
   ip_configuration {
     name                          = "ipconfig"
     private_ip_address_allocation = "Dynamic"
-    subnet_id                     = azurerm_subnet.sub1.id
+    subnet_id                     = azurerm_subnet.sub.id
     public_ip_address_id          = azurerm_public_ip.pubip.id
   }
 }
@@ -58,10 +50,11 @@ resource "azurerm_network_interface" "nic2" {
   location            = var.RG_LOCATION
   name                = "${var.PREFIX}-nic2"
   resource_group_name = azurerm_resource_group.resgrp.name
+
   ip_configuration {
     name                          = "ipconfig"
     private_ip_address_allocation = "Dynamic"
-    subnet_id                     = azurerm_subnet.sub1.id
+    subnet_id                     = azurerm_subnet.sub.id
   }
 }
 
@@ -73,20 +66,8 @@ resource "azurerm_network_security_group" "nsg" {
   security_rule {
     access                     = "Allow"
     direction                  = "Inbound"
-    name                       = "Allow_80"
-    priority                   = 100
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "*"
-    source_address_prefix      = "*"
-    destination_address_prefix = "*"
-  }
-
-  security_rule {
-    access                     = "Allow"
-    direction                  = "Inbound"
     name                       = "Allow_22"
-    priority                   = 200
+    priority                   = 100
     protocol                   = "Tcp"
     source_port_range          = "*"
     destination_port_range     = "*"
@@ -97,7 +78,19 @@ resource "azurerm_network_security_group" "nsg" {
 
 resource "azurerm_subnet_network_security_group_association" "association" {
   network_security_group_id = azurerm_network_security_group.nsg.id
-  subnet_id                 = azurerm_subnet.sub1.id
+  subnet_id                 = azurerm_subnet.sub.id
+}
+
+resource "random_id" "random" {
+  byte_length = 2
+}
+
+resource "azurerm_storage_account" "sa" {
+  account_replication_type = "LRS"
+  account_tier             = "Standard"
+  location                 = var.RG_LOCATION
+  name                     = "${var.STORAGE_ACCOUNT}${random_id.random.hex}"
+  resource_group_name      = azurerm_resource_group.resgrp.name
 }
 
 resource "azurerm_virtual_machine" "vm" {
@@ -110,7 +103,7 @@ resource "azurerm_virtual_machine" "vm" {
 
   boot_diagnostics {
     enabled     = true
-    storage_uri = azurerm_storage_account.sa[0].primary_blob_endpoint
+    storage_uri = azurerm_storage_account.sa.primary_blob_endpoint
   }
 
   storage_image_reference {
@@ -141,10 +134,8 @@ resource "azurerm_virtual_machine" "vm" {
 data "azurerm_public_ip" "datapubip" {
   name                = azurerm_public_ip.pubip.name
   resource_group_name = azurerm_resource_group.resgrp.name
-  depends_on          = [azurerm_public_ip.pubip, azurerm_virtual_machine.vm]
+  depends_on          = [azurerm_virtual_machine.vm]
 }
-
-
 
 #resource "azurerm_storage_account" "sa" {
 #  account_replication_type = "LRS"

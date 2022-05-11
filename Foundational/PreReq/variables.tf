@@ -13,4 +13,9 @@ variable "PASSWORD" {
   description = "Enter password for vm"
 }
 
-variable "STORAGE_ACCOUNT" {}
+variable "STORAGE_ACCOUNT" {
+  type = list(any)
+}
+
+variable "STORAGE_CONTAINER" {
+}
