@@ -1,3 +1,11 @@
+resource "random_password" "pwd" {
+  length      = 12
+  special     = false
+  min_lower   = 1
+  min_numeric = 3
+  min_upper   = 1
+}
+
 # create three rgs for vm, fw, peering in one go
 resource "azurerm_resource_group" "resgrp" {
   location = var.RG_LOCATION
@@ -34,22 +42,22 @@ resource "azurerm_network_security_group" "nsg" {
   location            = var.RG_LOCATION
   name                = "${var.PREFIX}-nsg"
   resource_group_name = azurerm_resource_group.resgrp["vmrg"].name
-#  security_rule {
-#    access                     = "Allow"
-#    direction                  = "Inbound"
-#    name                       = "Allow_SSH"
-#    priority                   = 100
-#    protocol                   = "Tcp"
-#    source_port_range          = "*"
-#    destination_port_range     = "22"
-#    source_address_prefix      = "*"
-#    destination_address_prefix = "*"
-#  }
+  #  security_rule {
+  #    access                     = "Allow"
+  #    direction                  = "Inbound"
+  #    name                       = "Allow_SSH"
+  #    priority                   = 100
+  #    protocol                   = "Tcp"
+  #    source_port_range          = "*"
+  #    destination_port_range     = "22"
+  #    source_address_prefix      = "*"
+  #    destination_address_prefix = "*"
+  #  }
 }
 
-resource "azurerm_network_interface_security_group_association" "nicnsg" {
-  network_interface_id      = azurerm_network_interface.nic.id
+resource "azurerm_subnet_network_security_group_association" "association" {
   network_security_group_id = azurerm_network_security_group.nsg.id
+  subnet_id                 = module.VirtualNetwork.subnet-id[0]
 }
 
 #Create Virtual network and subnet for Firewall
@@ -94,6 +102,7 @@ resource "azurerm_firewall_policy_rule_collection_group" "fw_rcg" {
     action   = "Dnat"
     name     = "AllowSSH"
     priority = 100
+
     rule {
       name                = "${var.PREFIX}-vm"
       source_addresses    = ["*"]
@@ -109,6 +118,7 @@ resource "azurerm_firewall_policy_rule_collection_group" "fw_rcg" {
     action   = "Dnat"
     name     = "AllowWebAccess"
     priority = 200
+
     rule {
       name                = "${var.PREFIX}-nginx"
       protocols           = ["TCP"]
@@ -127,19 +137,12 @@ resource "random_id" "random" {
 
 resource "azurerm_storage_account" "sa" {
   account_replication_type = "LRS"
-  account_tier             = "Premium"
+  account_tier             = "Standard"
   location                 = var.RG_LOCATION
-  name                     = "${var.STORAGE_ACCOUNT[count.index]}${random_id.random.hex}"
+  name                     = "${var.STORAGE_ACCOUNT}${random_id.random.hex}"
   resource_group_name      = azurerm_resource_group.resgrp["vmrg"].name
-  count                    = length(var.STORAGE_ACCOUNT)
   tags                     = var.TAGS
 }
-
-resource "azurerm_storage_container" "sc" {
-  name                 = "tfstate"
-  storage_account_name = azurerm_storage_account.sa[1].name
-}
-
 
 resource "azurerm_virtual_machine" "vm" {
   location = var.RG_LOCATION
@@ -154,7 +157,7 @@ resource "azurerm_virtual_machine" "vm" {
 
   boot_diagnostics {
     enabled     = true
-    storage_uri = azurerm_storage_account.sa[0].primary_blob_endpoint
+    storage_uri = azurerm_storage_account.sa.primary_blob_endpoint
   }
 
   storage_image_reference {
@@ -168,13 +171,13 @@ resource "azurerm_virtual_machine" "vm" {
     create_option     = "FromImage"
     name              = "${var.PREFIX}-osdisk"
     caching           = "ReadWrite"
-    managed_disk_type = "Standard_LRS"
+    managed_disk_type = "Premium_LRS"
   }
 
   os_profile {
     computer_name  = "${var.PREFIX}-vm"
     admin_username = var.USERNAME
-    admin_password = var.PASSWORD
+    admin_password = random_password.pwd.result
   }
 
   os_profile_linux_config {
@@ -195,11 +198,10 @@ resource "azurerm_virtual_machine_extension" "example" {
         "commandToExecute": "sudo apt-get install nginx -y"
     }
 SETTINGS
-    tags = var.TAGS
+  tags     = var.TAGS
 }
 
 data "azurerm_public_ip" "fw_pubip" {
   name                = module.firewall.fw_pubip_name
   resource_group_name = azurerm_resource_group.resgrp["fwrg"].name
 }
-

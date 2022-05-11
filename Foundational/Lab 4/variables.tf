@@ -15,15 +15,8 @@ variable "FW_VNET_ADDRESS" {}
 variable "FW_VNET_SUBNET_ADDRESS" {}
 
 variable "USERNAME" {}
-variable "PASSWORD" {
-  description = "Enter password for vm"
-}
 
-variable "STORAGE_ACCOUNT" {
-  type = list(any)
-}
-variable "STORAGE_CONTAINER" {
-}
+variable "STORAGE_ACCOUNT" {}
 
 variable "TAGS" {
   type = map(any)
