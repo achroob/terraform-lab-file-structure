@@ -2,20 +2,10 @@ variable "PREFIX" {}
 
 variable "RG_LOCATION" {}
 
-variable "VNET_ADDRESS" {}
+variable "STORAGE_ACCOUNT" {}
 
-variable "VNET_SUBNET_ADDRESS" {}
+variable "STORAGE_CONTAINER" {}
 
-variable "USERNAME" {}
-
-variable "PASSWORD" {
-  sensitive   = true
-  description = "Enter password for vm"
-}
-
-variable "STORAGE_ACCOUNT" {
-  type = list(any)
-}
-
-variable "STORAGE_CONTAINER" {
+variable "LAB_NAME" {
+  type = list(string)
 }
